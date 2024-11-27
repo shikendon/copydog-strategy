@@ -2,6 +2,7 @@ import dotenv from 'dotenv';
 import fs from 'fs';
 import { NATIVE_MINT } from '@solana/spl-token';
 import { apiSwap } from './swap';
+import { sendSlackMessage } from './slack';
 
 dotenv.config();
 
@@ -88,13 +89,17 @@ async function buyInToken(tokenName: string, mintAddress: string, retries = 5) {
   const inputMint = NATIVE_MINT.toBase58();
   const outputMint = mintAddress;
   const amount = 0.05 * 1_000_000_000; // lamports
-  console.log(`Swap \`SOL\` to \`${tokenName}\`[${mintAddress}]`);
+  const message = `Swap \`SOL\` to \`${tokenName}\`[${mintAddress}]`;
+  console.log(message);
+  sendSlackMessage(message);
   while (retries >= 0) {
     try {
       return await apiSwap(inputMint, outputMint, amount);
     } catch (error) {
       if (error instanceof Error) {
-        console.error(`Buying in \`${tokenName}\` error(${retries}): ${error.message}`);
+        const errorMessage = `Buying in \`${tokenName}\` error(${retries}): ${error.message}`;
+        console.error(errorMessage);
+        sendSlackMessage(errorMessage);
       } else {
         console.error(error);
       }
@@ -107,13 +112,17 @@ async function sellOutToken(tokenName: string, mintAddress: string, retries = 10
   const inputMint = mintAddress;
   const outputMint = NATIVE_MINT.toBase58();
   const amount = Number.MAX_SAFE_INTEGER;
-  console.log(`Swap \`${tokenName}\`[${mintAddress}] to \`SOL\``);
+  const message = `Swap \`${tokenName}\`[${mintAddress}] to \`SOL\``;
+  console.log(message);
+  sendSlackMessage(message);
   while (retries >= 0) {
     try {
       return await apiSwap(inputMint, outputMint, amount);
     } catch (error) {
       if (error instanceof Error) {
-        console.error(`Selling out \`${tokenName}\` error(${retries}): ${error.message}`);
+        const errorMessage = `Selling out \`${tokenName}\` error(${retries}): ${error.message}`;
+        console.error(errorMessage);
+        sendSlackMessage(errorMessage);
       } else {
         console.error(error);
       }

@@ -9,7 +9,8 @@ case 'sell': {
   const inputMint = process.argv[3];
   const outputMint = NATIVE_MINT.toBase58();
   const amount = Number.MAX_SAFE_INTEGER;
-  console.log(inputMint);
+  const message = `Swap \`${inputMint}\` to \`SOL\``;
+  console.log(message);
   apiSwap(inputMint, outputMint, amount);
   break;
 }
