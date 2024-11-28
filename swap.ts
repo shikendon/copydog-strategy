@@ -81,6 +81,12 @@ export const apiSwap = async (inputMint: string, outputMint: string, amount: num
     throw new Error('Compute swap failed');
   }
 
+  const outputAmount = parseInt(swapResponse.data.outputAmount);
+  if (outputAmount < 0.01 * 1_000_000_000) {
+    console.error(`Output amount too low: ${outputAmount / 1_000_000_000} SOL`);
+    throw new Error('Output amount too low');
+  }
+
   const { data: swapTransactions } = await axios.post<{
     id: string
     version: string
@@ -131,7 +137,7 @@ export const apiSwap = async (inputMint: string, outputMint: string, amount: num
         },
         'confirmed',
       );
-      console.log(`${idx} transaction confirmed`);
+      console.log(`${idx} transaction confirmed.`);
     }
   }
 
