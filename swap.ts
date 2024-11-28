@@ -4,6 +4,11 @@ import axios from 'axios';
 import { connection, owner, fetchTokenAccountData } from './config';
 import { API_URLS } from '@raydium-io/raydium-sdk-v2';
 
+export const ERROR_INPUT_TOKEN_ACCOUNT_NOT_FOUND = new Error('Input token account not found');
+export const ERROR_GET_PRIORITY_FEE_FAILED = new Error('Get priority fee failed');
+export const ERROR_COMPUTE_SWAP_FAILED = new Error('Compute swap failed');
+export const ERROR_OUTPUT_AMOUNT_TOO_LOW = new Error('Output amount too low');
+
 interface SwapCompute {
   id: string
   success: true
@@ -44,7 +49,7 @@ export const apiSwap = async (inputMint: string, outputMint: string, amount: num
   const outputTokenPublicKey = outputTokenAcc?.publicKey;
 
   if (!inputTokenPublicKey && !isInputSol) {
-    throw new Error('Do not have input token account');
+    throw ERROR_INPUT_TOKEN_ACCOUNT_NOT_FOUND;
   }
 
   if (amount > inputTokenAcc?.amount && !isInputSol) {
@@ -65,7 +70,7 @@ export const apiSwap = async (inputMint: string, outputMint: string, amount: num
   }>(`${API_URLS.BASE_HOST}${API_URLS.PRIORITY_FEE}`);
 
   if (!data.success) {
-    throw new Error('Get priority fee failed');
+    throw ERROR_GET_PRIORITY_FEE_FAILED;
   }
 
   const { data: swapResponse } = await axios.get<SwapCompute>(
@@ -78,13 +83,13 @@ export const apiSwap = async (inputMint: string, outputMint: string, amount: num
 
   if (!swapResponse.success) {
     console.error('Compute swap failed, msg:', swapResponse.msg);
-    throw new Error('Compute swap failed');
+    throw ERROR_COMPUTE_SWAP_FAILED;
   }
 
   const outputAmount = parseInt(swapResponse.data.outputAmount);
   if (outputAmount < 0.01 * 1_000_000_000) {
     console.error(`Output amount too low: ${outputAmount / 1_000_000_000} SOL`);
-    throw new Error('Output amount too low');
+    throw ERROR_OUTPUT_AMOUNT_TOO_LOW;
   }
 
   const { data: swapTransactions } = await axios.post<{
