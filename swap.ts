@@ -1,4 +1,4 @@
-import { Transaction, VersionedTransaction, sendAndConfirmTransaction } from '@solana/web3.js';
+import { VersionedTransaction } from '@solana/web3.js';
 import { NATIVE_MINT } from '@solana/spl-token';
 import axios from 'axios';
 import { connection, owner, fetchTokenAccountData } from './config';
@@ -8,6 +8,7 @@ export const ERROR_INPUT_TOKEN_ACCOUNT_NOT_FOUND = new Error('Input token accoun
 export const ERROR_GET_PRIORITY_FEE_FAILED = new Error('Get priority fee failed');
 export const ERROR_COMPUTE_SWAP_FAILED = new Error('Compute swap failed');
 export const ERROR_OUTPUT_AMOUNT_TOO_LOW = new Error('Output amount too low');
+export const ERROR_TRANSACTION_FAILED = new Error('Transaction failed');
 
 interface SwapCompute {
   id: string
@@ -38,9 +39,11 @@ interface SwapCompute {
 export const apiSwap = async (inputMint: string, outputMint: string, amount: number) => {
   const slippage = 0.5; // in percent, for this example, 0.5 means 0.5%
   const txVersion: string = 'V0'; // or LEGACY
-  const isV0Tx = txVersion === 'V0';
 
-  const [isInputSol, isOutputSol] = [inputMint === NATIVE_MINT.toBase58(), outputMint === NATIVE_MINT.toBase58()];
+  const [isInputSol, isOutputSol] = [
+    inputMint === NATIVE_MINT.toBase58(),
+    outputMint === NATIVE_MINT.toBase58(),
+  ];
 
   const { tokenAccounts } = await fetchTokenAccountData();
   const inputTokenAcc = tokenAccounts.find((a) => a.mint.toBase58() === inputMint);
@@ -76,7 +79,9 @@ export const apiSwap = async (inputMint: string, outputMint: string, amount: num
   const { data: swapResponse } = await axios.get<SwapCompute>(
     `${
       API_URLS.SWAP_HOST
-    }/compute/swap-base-in?inputMint=${inputMint}&outputMint=${outputMint}&amount=${amount}&slippageBps=${
+    }/compute/swap-base-in?inputMint=${inputMint}&outputMint=${outputMint}&amount=${
+      amount
+    }&slippageBps=${
       slippage * 100
     }&txVersion=${txVersion}`,
   );
@@ -109,40 +114,34 @@ export const apiSwap = async (inputMint: string, outputMint: string, amount: num
   });
 
   const allTxBuf = swapTransactions.data.map((tx) => Buffer.from(tx.transaction, 'base64'));
-  const allTransactions = allTxBuf.map((txBuf) =>
-    isV0Tx ? VersionedTransaction.deserialize(txBuf) : Transaction.from(txBuf),
-  );
+  const allTransactions = allTxBuf.map((txBuf) => VersionedTransaction.deserialize(txBuf));
 
   // console.debug(`total ${allTransactions.length} transactions`, swapTransactions)
 
-  let idx = 0;
-  if (!isV0Tx) {
-    for (const tx of allTransactions) {
-      console.log(`${++idx} transaction sending...`);
-      const transaction = tx as Transaction;
-      transaction.sign(owner);
-      const txId = await sendAndConfirmTransaction(connection, transaction, [owner], { skipPreflight: true });
-      console.log(`${++idx} transaction confirmed, txId: ${txId}`);
-    }
-  } else {
-    for (const tx of allTransactions) {
-      idx++;
-      const transaction = tx as VersionedTransaction;
-      transaction.sign([owner]);
-      const txId = await connection.sendTransaction(tx as VersionedTransaction, { skipPreflight: true });
-      const { lastValidBlockHeight, blockhash } = await connection.getLatestBlockhash({
-        commitment: 'finalized',
-      });
-      console.log(`${idx} transaction sending..., txId: ${txId}`);
-      await connection.confirmTransaction(
-        {
-          blockhash,
-          lastValidBlockHeight,
-          signature: txId,
-        },
-        'confirmed',
-      );
-      console.log(`${idx} transaction confirmed.`);
+  for (const [idx, tx] of allTransactions.entries()) {
+    const transaction = tx as VersionedTransaction;
+    transaction.sign([owner]);
+    const txId = await connection.sendTransaction(tx as VersionedTransaction, { skipPreflight: true });
+    const { lastValidBlockHeight, blockhash } = await connection.getLatestBlockhash({
+      commitment: 'finalized',
+    });
+    console.log(`Transaction[${idx}] sending..., txId: ${txId}`);
+    await connection.confirmTransaction(
+      {
+        blockhash,
+        lastValidBlockHeight,
+        signature: txId,
+      },
+      'confirmed',
+    );
+    console.log(`Transaction[${idx}] confirmed.`);
+
+    const txInfo = await connection.getTransaction(txId);
+    if (!txInfo?.meta?.err) {
+      console.log(`Transaction[${idx}] success.`);
+    } else {
+      console.error(`Transaction[${idx}] error:`, txInfo?.meta?.err);
+      throw ERROR_TRANSACTION_FAILED;
     }
   }
 
