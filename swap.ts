@@ -36,10 +36,6 @@ interface SwapCompute {
   }
 }
 
-function sleep(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
 export const apiSwap = async (inputMint: string, outputMint: string, amount: number) => {
   const slippage = 0.5; // in percent, for this example, 0.5 means 0.5%
   const txVersion: string = 'V0'; // or LEGACY
@@ -130,7 +126,7 @@ export const apiSwap = async (inputMint: string, outputMint: string, amount: num
       commitment: 'finalized',
     });
     console.log(`Transaction[${idx}] sending..., txId: ${txId}`);
-    await connection.confirmTransaction(
+    const confirmedTx = await connection.confirmTransaction(
       {
         blockhash,
         lastValidBlockHeight,
@@ -138,14 +134,11 @@ export const apiSwap = async (inputMint: string, outputMint: string, amount: num
       },
       'confirmed',
     );
-    console.log(`Transaction[${idx}] confirmed.`);
 
-    await sleep(5000);
-    const txInfo = await connection.getTransaction(txId);
-    if (!txInfo?.meta?.err) {
-      console.log(`Transaction[${idx}] success.`);
+    if (!confirmedTx.value.err) {
+      console.log(`Transaction[${idx}] confirmed.`);
     } else {
-      console.error(`Transaction[${idx}] error:`, txInfo?.meta?.err);
+      console.error(`Transaction[${idx}] failed with error:`, confirmedTx.value.err);
       throw ERROR_TRANSACTION_FAILED;
     }
   }

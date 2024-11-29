@@ -22,7 +22,7 @@ case 'get': {
   };
   connection.getTransaction(process.argv[3], options).then((txInfo) => {
     if (txInfo?.meta?.err && txInfo?.meta?.logMessages) {
-      console.error(txInfo.meta.err);
+      console.error('Transaction warning:', txInfo.meta.err);
       console.error(txInfo.meta.logMessages.slice(-3));
     }
   });
