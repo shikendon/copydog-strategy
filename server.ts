@@ -97,8 +97,14 @@ async function fetchChangeAlert() {
       }
 
       const success = await buyInToken(tokenItem.tokenName, tokenItem.tokenAddress);
-      if (!success) {
-        console.error(`Failed to buy in \`${tokenItem.tokenName}\``);
+      if (success) {
+        const consoleMessage = `Bought in \`${tokenItem.tokenName}\``;
+        console.log(consoleMessage);
+        sendSlackMessage(consoleMessage);
+      } else {
+        const consoleMessage = `Failed to buy in \`${tokenItem.tokenName}\``;
+        console.error(consoleMessage);
+        sendSlackMessage(consoleMessage);
         continue;
       }
 
@@ -108,7 +114,16 @@ async function fetchChangeAlert() {
     if (tokenItem.boughtIn && tokenItem.soldOut == undefined) {
       tokenItem.soldOut = false;
       setTimeout(async function () {
-        await sellOutToken(tokenItem.tokenName, tokenItem.tokenAddress);
+        const success = await sellOutToken(tokenItem.tokenName, tokenItem.tokenAddress);
+        if (success) {
+          const consoleMessage = `Sold out \`${tokenItem.tokenName}\``;
+          console.log(consoleMessage);
+          sendSlackMessage(consoleMessage);
+        } else {
+          const consoleMessage = `Failed to sell out \`${tokenItem.tokenName}\``;
+          console.error(consoleMessage);
+          sendSlackMessage(consoleMessage);
+        }
         tokenItem.soldOut = true;
       }, tokenItem.closedTime - Date.now());
       const localCloseTime = new Date(tokenItem.closedTime).toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' });
@@ -131,15 +146,14 @@ async function buyInToken(tokenName: string, mintAddress: string, retries = 5) {
       return await apiSwap(inputMint, outputMint, amount);
     } catch (error) {
       if (error instanceof Error) {
-        const errorMessage = `Buying in \`${tokenName}\` error(${retries}): ${error.message}`;
-        console.error(errorMessage);
-        sendSlackMessage(errorMessage);
+        console.error(`Buying in \`${tokenName}\` error(${retries}): ${error.message}`);
       } else {
         console.error(error);
       }
       retries--;
     }
   }
+  return false;
 }
 
 async function sellOutToken(tokenName: string, mintAddress: string, retries = 10) {
@@ -165,15 +179,14 @@ async function sellOutToken(tokenName: string, mintAddress: string, retries = 10
           retries = 0;
           break;
         }
-        const errorMessage = `Selling out \`${tokenName}\` error(${retries}): ${error.message}`;
-        console.error(errorMessage);
-        sendSlackMessage(errorMessage);
+        console.error(`Selling out \`${tokenName}\` error(${retries}): ${error.message}`);
       } else {
         console.error(error);
       }
       retries--;
     }
   }
+  return false;
 }
 
 function run() {
