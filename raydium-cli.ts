@@ -1,4 +1,6 @@
+import { GetVersionedTransactionConfig } from '@solana/web3.js';
 import { NATIVE_MINT } from '@solana/spl-token';
+import { connection } from './config';
 import { apiSwap } from './swap';
 
 switch (process.argv[2]) {
@@ -12,6 +14,18 @@ case 'sell': {
   const message = `Swap \`${inputMint}\` to \`SOL\``;
   console.log(message);
   apiSwap(inputMint, outputMint, amount);
+  break;
+}
+case 'get': {
+  const options: GetVersionedTransactionConfig = {
+    maxSupportedTransactionVersion: 0,
+  };
+  connection.getTransaction(process.argv[3], options).then((txInfo) => {
+    if (txInfo?.meta?.err && txInfo?.meta?.logMessages) {
+      console.error(txInfo.meta.err);
+      console.error(txInfo.meta.logMessages.slice(-3));
+    }
+  });
   break;
 }
 default:

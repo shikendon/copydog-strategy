@@ -36,6 +36,10 @@ interface SwapCompute {
   }
 }
 
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export const apiSwap = async (inputMint: string, outputMint: string, amount: number) => {
   const slippage = 0.5; // in percent, for this example, 0.5 means 0.5%
   const txVersion: string = 'V0'; // or LEGACY
@@ -136,6 +140,7 @@ export const apiSwap = async (inputMint: string, outputMint: string, amount: num
     );
     console.log(`Transaction[${idx}] confirmed.`);
 
+    await sleep(5000);
     const txInfo = await connection.getTransaction(txId);
     if (!txInfo?.meta?.err) {
       console.log(`Transaction[${idx}] success.`);
