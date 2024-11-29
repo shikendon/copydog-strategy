@@ -1,7 +1,12 @@
 import dotenv from 'dotenv';
 import fs from 'fs';
 import { NATIVE_MINT } from '@solana/spl-token';
-import { ERROR_INPUT_TOKEN_ACCOUNT_NOT_FOUND, apiSwap } from './swap';
+import {
+  ERROR_INPUT_TOKEN_ACCOUNT_NOT_FOUND,
+  ERROR_COMPUTE_SWAP_FAILED,
+  ERROR_OUTPUT_AMOUNT_TOO_LOW,
+} from './swap';
+import { apiSwap } from './swap';
 import { sendSlackMessage } from './slack';
 
 dotenv.config();
@@ -151,6 +156,12 @@ async function sellOutToken(tokenName: string, mintAddress: string, retries = 10
       if (error instanceof Error) {
         switch (error.message) {
         case ERROR_INPUT_TOKEN_ACCOUNT_NOT_FOUND.message:
+          retries = 0;
+          break;
+        case ERROR_COMPUTE_SWAP_FAILED.message:
+          retries = 0;
+          break;
+        case ERROR_OUTPUT_AMOUNT_TOO_LOW.message:
           retries = 0;
           break;
         }
