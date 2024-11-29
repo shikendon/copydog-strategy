@@ -165,5 +165,11 @@ async function sellOutToken(tokenName: string, mintAddress: string, retries = 10
   }
 }
 
-fetchChangeAlert();
-setInterval(fetchChangeAlert, 10000);
+function run() {
+  fetchChangeAlert().then(function () {
+    setTimeout(run, 10 * 1000);
+  });
+}
+
+run();
+console.log('Running...');
