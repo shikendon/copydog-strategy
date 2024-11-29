@@ -8,15 +8,25 @@ dotenv.config();
 
 const API_URL = process.env.API_URL || '';
 const API_TOKEN = process.env.API_TOKEN;
-const trendTokens: string[] = [];
+const trendTokens: { [key: string]: TokenItem } = {};
 const trendTokensFile = '.cache/trendTokens.json';
+
+interface TokenItem {
+  id: number;
+  tokenName: string;
+  liquidity: number;
+  tokenAddress: string;
+  initialPrice: number;
+  m1Price: number;
+  createTime: string;
+  closedTime: number;
+  boughtIn?: boolean;
+  soldOut?: boolean;
+}
 
 if (fs.existsSync(trendTokensFile)) {
   const fileContent = fs.readFileSync(trendTokensFile, 'utf8');
-  const fileTokens = JSON.parse(fileContent);
-  for (const token of fileTokens) {
-    trendTokens.push(token);
-  }
+  Object.assign(trendTokens, JSON.parse(fileContent));
 }
 
 async function fetchChangeAlert() {
@@ -51,34 +61,53 @@ async function fetchChangeAlert() {
     const dateTime = new Date(createTime);
     const priceChange = (m1Price - initialPrice) / initialPrice;
     const priceChangeStr = (priceChange * 100).toFixed(2);
-    const closeTime = new Date(createTime).getTime() + 30 * 60 * 1000;
+    const closedTime = new Date(createTime).getTime() + 30 * 60 * 1000;
 
-    if (trendTokens.includes(tokenAddress)) {
+    if (tokenAddress in trendTokens) {
       continue;
+    } else {
+      console.log(id, `\`${tokenName}\``, liquidity, tokenAddress, `${priceChangeStr}%`, dateTime);
+      trendTokens[tokenAddress] = {
+        id,
+        tokenName,
+        liquidity,
+        tokenAddress,
+        initialPrice,
+        m1Price,
+        createTime,
+        closedTime,
+        boughtIn: undefined,
+        soldOut: undefined,
+      };
+      break;
+    }
+  }
+
+  for (const tokenItem of Object.values(trendTokens)) {
+    if (tokenItem.boughtIn === undefined && tokenItem.closedTime > Date.now()) {
+      if (tokenItem.closedTime - Date.now() < 25 * 60 * 1000) {
+        console.error(`Time too late to buy in \`${tokenItem.tokenName}\``);
+        tokenItem.boughtIn = false;
+        continue;
+      }
+
+      const success = await buyInToken(tokenItem.tokenName, tokenItem.tokenAddress);
+      if (!success) {
+        console.error(`Failed to buy in \`${tokenItem.tokenName}\``);
+        continue;
+      }
+
+      tokenItem.boughtIn = true;
     }
 
-    console.log(id, `\`${tokenName}\``, liquidity, tokenAddress, `${priceChangeStr}%`, dateTime);
-    trendTokens.push(tokenAddress);
-
-    if (closeTime > Date.now()) {
-      if (closeTime - Date.now() < 25 * 60 * 1000) {
-        console.error(`Time too late to buy in \`${tokenName}\``);
-        continue;
-      }
-
-      const success = await buyInToken(tokenName, tokenAddress);
-      if (!success) {
-        console.error(`Failed to buy in \`${tokenName}\``);
-        continue;
-      }
-
+    if (tokenItem.boughtIn && tokenItem.soldOut == undefined) {
+      tokenItem.soldOut = false;
       setTimeout(async function () {
-        await sellOutToken(tokenName, tokenAddress);
-      }, closeTime - Date.now());
-      const localCloseTime = new Date(closeTime).toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' });
-      console.log(`Scheduled sell out \`${tokenName}\` at`, localCloseTime);
-
-      break;
+        await sellOutToken(tokenItem.tokenName, tokenItem.tokenAddress);
+        tokenItem.soldOut = true;
+      }, tokenItem.closedTime - Date.now());
+      const localCloseTime = new Date(tokenItem.closedTime).toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' });
+      console.log(`Scheduled sell out \`${tokenItem.tokenName}\` at`, localCloseTime);
     }
   }
 
