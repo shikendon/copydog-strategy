@@ -91,7 +91,9 @@ async function fetchChangeAlert() {
   for (const tokenItem of Object.values(trendTokens)) {
     if (tokenItem.boughtIn === undefined && tokenItem.closedTime > Date.now()) {
       if (tokenItem.closedTime - Date.now() < 25 * 60 * 1000) {
-        console.error(`Time too late to buy in \`${tokenItem.tokenName}\``);
+        const consoleMessage = `Time too late to buy in \`${tokenItem.tokenName}\``;
+        console.error(consoleMessage);
+        sendSlackMessage(consoleMessage);
         tokenItem.boughtIn = false;
         continue;
       }
