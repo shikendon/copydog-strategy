@@ -134,23 +134,21 @@ async function fetchChangeAlert() {
   fs.writeFileSync(trendTokensFile, JSON.stringify(trendTokens, null, 2));
 }
 
-async function buyInToken(tokenName: string, mintAddress: string, retries = 5) {
+async function buyInToken(tokenName: string, mintAddress: string) {
   const inputMint = NATIVE_MINT.toBase58();
   const outputMint = mintAddress;
   const amount = 0.05 * 1_000_000_000; // lamports
   const message = `Swap \`SOL\` to \`${tokenName}\`[${mintAddress}]`;
   console.log(message);
   sendSlackMessage(message);
-  while (retries >= 0) {
-    try {
-      return await apiSwap(inputMint, outputMint, amount);
-    } catch (error) {
-      if (error instanceof Error) {
-        console.error(`Buying in \`${tokenName}\` error(${retries}): ${error.message}`);
-      } else {
-        console.error(error);
-      }
-      retries--;
+
+  try {
+    return await apiSwap(inputMint, outputMint, amount);
+  } catch (error) {
+    if (error instanceof Error) {
+      console.error(`Buying in \`${tokenName}\` error: ${error.message}`);
+    } else {
+      console.error(error);
     }
   }
   return false;
