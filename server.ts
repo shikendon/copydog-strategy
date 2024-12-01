@@ -90,7 +90,7 @@ async function fetchChangeAlert() {
 
   for (const tokenItem of Object.values(trendTokens)) {
     if (tokenItem.boughtIn === undefined && tokenItem.closedTime > Date.now()) {
-      if (tokenItem.closedTime - Date.now() < 25 * 60 * 1000) {
+      if (tokenItem.closedTime - Date.now() < 29 * 60 * 1000) {
         const consoleMessage = `Time too late to buy in \`${tokenItem.tokenName}\``;
         console.error(consoleMessage);
         sendSlackMessage(consoleMessage);
@@ -191,7 +191,7 @@ async function sellOutToken(tokenName: string, mintAddress: string, retries = 10
 
 function run() {
   fetchChangeAlert().then(function () {
-    setTimeout(run, 10 * 1000);
+    setTimeout(run, 3 * 1000);
   });
 }
 
