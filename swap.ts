@@ -92,7 +92,7 @@ export const apiSwap = async (inputMint: string, outputMint: string, amount: num
   }
 
   const outputAmount = parseInt(swapResponse.data.outputAmount);
-  if (outputAmount < 0.01 * 1_000_000_000) {
+  if (outputAmount < 0.005 * 1_000_000_000) {
     console.error(`Output amount too low: ${outputAmount / 1_000_000_000} SOL`);
     throw ERROR_OUTPUT_AMOUNT_TOO_LOW;
   }
