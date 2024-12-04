@@ -68,11 +68,28 @@ async function fetchChangeAlert() {
     const priceChangeStr = (priceChange * 100).toFixed(2);
     const closedTime = new Date(createTime).getTime() + 30 * 60 * 1000;
 
-    if (tokenAddress in trendTokens) {
+    if (id in trendTokens) {
       continue;
     } else {
       console.log(id, `\`${tokenName}\``, liquidity, tokenAddress, `${priceChangeStr}%`, dateTime);
-      trendTokens[tokenAddress] = {
+
+      let initialFlag = undefined;
+      const recentTokens = Object.values(trendTokens).filter((value) => {
+        const createTime = new Date(value.createTime).getTime();
+        return Date.now() - createTime < 86400 * 1000;
+      }).reduce((acc: { [key: string]: TokenItem }, value) => {
+        acc[value.tokenAddress] = value;
+        return acc;
+      }, {});
+
+      if (tokenAddress in recentTokens) {
+        initialFlag = false;
+        const consoleMessage = `Duplicate token \`${tokenName}\` found!`;
+        console.error(consoleMessage);
+        sendSlackMessage(consoleMessage);
+      }
+
+      trendTokens[id] = {
         id,
         tokenName,
         liquidity,
@@ -81,9 +98,10 @@ async function fetchChangeAlert() {
         m1Price,
         createTime,
         closedTime,
-        boughtIn: undefined,
-        soldOut: undefined,
+        boughtIn: initialFlag,
+        soldOut: initialFlag,
       };
+
       break;
     }
   }
